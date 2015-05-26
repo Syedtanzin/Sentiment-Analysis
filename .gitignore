@@ -96,3 +96,424 @@ Modi_tweets1 <-searchTwitter("#Modi Modi", n=2000, lang="en",since="2015-01-01")
   
 Rahul_tweets1 <-searchTwitter("#Rahul Rahul", n=2000, lang="en",since="2015-01-01")
   Rahul_tweets2 <-searchTwitter('@IndianNationalCongress', n=2000, lang="en", since="2015-01-01")
+
+#####################################################################
+
+# STEP 4: COLLECT TWEETS RELATED CANDIDATES OF INDIAN_ELECTION(2014)
+
+#####################################################################
+
+Kejriwal_tweets1 <-searchTwitter("#Kejriwal kejriwal", n=2000, lang="en",since="2015-01-01")
+  Kejriwal_tweets2 <-searchTwitter('@AamAdmiParty', n=2000, lang="en", since="2015-01-01")
+  
+Modi_tweets1 <-searchTwitter("#Modi Modi", n=2000, lang="en",since="2015-01-01")
+  Modi_tweets2 <-searchTwitter('@BJP', n=2000, lang="en", since="2015-01-01")
+  
+Rahul_tweets1 <-searchTwitter("#Rahul Rahul", n=2000, lang="en",since="2015-01-01")
+  Rahul_tweets2 <-searchTwitter('@IndianNationalCongress', n=2000, lang="en", since="2015-01-01")
+  
+#####################################################################
+
+# STEP 5: PREPARE THE TEXT FOR SENTIMENT ANALYSIS
+
+#####################################################################
+
+    ## STEP 5.1: Get text from tweet of each candidate
+         Kejriwal_text1 <-sapply(unlist(Kejriwal_tweets1), function(x) x$getText())
+           Kejriwal_text2 <-sapply(unlist(Kejriwal_tweets2), function(x) x$getText())
+
+         Modi_text1 <-sapply(unlist(Modi_tweets1), function(x) x$getText())
+           Modi_text2 <-sapply(unlist(Modi_tweets2), function(x) x$getText())
+
+         Rahul_text1 <-sapply(unlist(Rahul_tweets1), function(x) x$getText())
+           Rahul_text2 <-sapply(unlist(Rahul_tweets2), function(x) x$getText())
+
+    ## STEP 5.2: Combine, Join and Remove duplicate tweets
+         Candidate_txt <-c(length(Kejriwal_text1), length(Kejriwal_text2),
+                          length(Modi_text1), length(Modi_text2),
+                          length(Rahul_text1), length(Rahul_text2)
+                          ) 
+        
+         Kejriwal_txt <-c(Kejriwal_text1, Kejriwal_text2)
+         Modi_txt <-c(Modi_text1, Modi_text2)
+         Rahul_txt <-c(Rahul_text1, Rahul_text2)
+        
+         Kejriwal_txt <-Kejriwal_txt[!duplicated(Kejriwal_txt)]
+           length(Kejriwal_txt)
+         Modi_txt <-Modi_txt[!duplicated(Modi_txt)]
+           length(Modi_txt)
+         Rahul_txt <-Rahul_txt[!duplicated(Rahul_txt)]
+           length(Rahul_txt)
+
+    ## STEP 5.3: Clean with text function
+         clean.text <- function(some_txt)
+      {  
+         some_txt = gsub("(RT|via)((?:\\b\\W*@\\w+)+)", "", some_txt)
+         some_txt = gsub("@\\w+", "", some_txt)
+         some_txt = gsub("[[:punct:]]", "", some_txt)
+         some_txt = gsub("[[:digit:]]", "", some_txt)
+         some_txt = gsub("http\\w+", "", some_txt)
+         some_txt = gsub("[ \t]{2,}", "", some_txt)
+         some_txt = gsub("^\\s+|\\s+$", "", some_txt)
+         
+       ## STEP 5.3.1: Remove non-english characters
+         some_txt = gsub("[^\x20-\x7E]", "", some_txt)
+       
+            # STEP 5.3.2: Define "tolower error handling" function
+              try.tolower = function(x)
+                {  
+                    y = NA
+                      try_error = tryCatch(tolower(x), error=function(e) e)
+                  if (!inherits(try_error, "error"))
+                    y = tolower(x)
+                  return(y)
+                }
+              some_txt = sapply(some_txt, try.tolower)
+              some_txt = some_txt[some_txt != ""]
+              names(some_txt) = NULL
+            return(some_txt)
+      }
+
+    ## STEP 5.4: Clean the text
+         Kejriwal.txt = clean.text(Kejriwal_txt)
+         Modi.txt = clean.text(Modi_txt)
+         Rahul.txt = clean.text(Rahul_txt)
+
+#####################################################################
+
+# STEP 6: PERFORM SENTIMENT ANALYSIS OF TWEETS 
+# (BY EMOTIONAL & POLARITY CATEGORIES: Method- Learning Based)
+
+#####################################################################
+
+##---- (a) Kejriwal ----##
+
+    ## STEP 6.1: Classify emotion
+         Kej_class_emo = classify_emotion(Kejriwal.txt, algorithm="bayes", prior=1.0)     
+
+      ### STEP 6.1.1: Get emotion best fit
+            emotion = Kej_class_emo[,7]                                         
+      
+      ### STEP 6.1.2: Substitute NA's by "unknown"
+            emotion[is.na(emotion)] = "unknown"                             
+
+    ## STEP 6.2: Classify polarity- Kejriwal
+         Kej_class_pol = classify_polarity(Kejriwal.txt, algorithm="bayes")  
+
+      ### STEP 6.2.1 Get polarity best fit
+            polarity = Kej_class_pol[,4]                                        
+
+    ## STEP 6.3: Create data frame to obtain some general statistics
+
+      ### STEP 6.3.1: Data frame with results
+            Kejriwal_sentiment = data.frame(text=Kejriwal.txt, emotion=emotion,
+              polarity=polarity, stringsAsFactors=FALSE)
+      
+      ### STEP 6.3.2: Rearrange dataset by sorting data frame
+            Kejriwal_sentiment = within(Kejriwal_sentiment,
+              emotion <- factor(emotion, levels=names(sort(table(emotion), 
+                decreasing=TRUE))))
+
+      ### STEP 6.3.3: Perform data visualization
+
+       #### Plot distribution of emotions
+            ggplot(Kejriwal_sentiment, aes(x=emotion))+geom_bar(aes(y=..count.., fill=emotion)) +
+              xlab("Emotion Categories")+ylab("Number of Tweets")+ 
+                ggtitle("SENTIMENT ANALYSIS OF TWEETS ON TWITTER ABOUT Kejriwal- Emotions")
+       
+       #### Plot distribution of polarity
+            ggplot(Kejriwal_sentiment, aes(x=polarity)) + geom_bar(aes(y=..count.., fill=polarity)) + 
+              xlab("Polarity Categories") + ylab("Number of Tweets") + 
+                ggtitle("SENTIMENT ANALYSIS OF TWEETS ON TWITTER ABOUT Kejriwal- Polarity")
+
+##---- (b) Modi ----##   
+
+    ## STEP 6.1: Classify emotion
+         Modi_class_emo = classify_emotion(Modi.txt, algorithm="bayes", prior=1.0)     
+
+      ### STEP 6.1.1: Get emotion best fit
+            emotion = Modi_class_emo[,7]                                         
+
+      ### STEP 6.1.2: Substitute NA's by "unknown"
+            emotion[is.na(emotion)] = "unknown"                             
+
+    ## STEP 6.2: Classify polarity- Kejriwal
+         Modi_class_pol = classify_polarity(Modi.txt, algorithm="bayes")  
+
+      ### STEP 6.2.1 Get polarity best fit
+            polarity = Modi_class_pol[,4]                                        
+
+    ## STEP 6.3: Create data frame to obtain some general statistics
+
+      ### STEP 6.3.1: Data frame with results
+            Modi_sentiment = data.frame(text=Modi.txt, emotion=emotion,
+              polarity=polarity, stringsAsFactors=FALSE)
+
+      ### STEP 6.3.2: Rearrange dataset by sorting data frame
+            Modi_sentiment = within(Modi_sentiment,
+              emotion <- factor(emotion, levels=names(sort(table(emotion), 
+                decreasing=TRUE))))
+
+      ### STEP 6.3.3: Perform data visualization
+
+       #### Plot distribution of emotions
+            ggplot(Modi_sentiment, aes(x=emotion))+geom_bar(aes(y=..count.., fill=emotion)) +
+              xlab("Emotion Categories")+ylab("Number of Tweets")+ 
+                ggtitle("SENTIMENT ANALYSIS OF TWEETS ON TWITTER ABOUT Modi- Emotions")
+
+       #### Plot distribution of polarity
+            ggplot(Modi_sentiment, aes(x=polarity)) + geom_bar(aes(y=..count.., fill=polarity)) + 
+              xlab("Polarity Categories") + ylab("Number of Tweets") + 
+                ggtitle("SENTIMENT ANALYSIS OF TWEETS ON TWITTER ABOUT Modi- Polarity")7: SEPARATE TEXT BY EMOTIONS & VISUALIZE THE WORDS WITH A COMPARISON CLOUD USING WORD CLOUD PACKAGE
+
+##---- (c) Rahul ----##
+
+    ## STEP 6.1: Classify emotion
+         Rah_class_emo = classify_emotion(Rahul.txt, algorithm="bayes", prior=1.0)     
+
+      ### STEP 6.1.1: Get emotion best fit
+            emotion = Rah_class_emo[,7]                                         
+
+      ### STEP 6.1.2: Substitute NA's by "unknown"
+            emotion[is.na(emotion)] = "unknown"                             
+
+    ## STEP 6.2: Classify polarity- Kejriwal
+         Rah_class_pol = classify_polarity(Rahul.txt, algorithm="bayes")  
+
+      ### STEP 6.2.1 Get polarity best fit
+            polarity = Rah_class_pol[,4]                                        
+
+    ## STEP 6.3: Create data frame to obtain some general statistics
+
+      ### STEP 6.3.1: Data frame with results
+            Rah_sentiment = data.frame(text=Rahul.txt, emotion=emotion,
+              polarity=polarity, stringsAsFactors=FALSE)
+
+      ### STEP 6.3.2: Rearrange dataset by sorting data frame
+            Rah_sentiment = within(Rah_sentiment,
+              emotion <- factor(emotion, levels=names(sort(table(emotion), 
+                decreasing=TRUE))))
+
+      ### STEP 6.3.3: Perform data visualization
+
+       #### Plot distribution of emotions
+            ggplot(Rah_sentiment, aes(x=emotion))+geom_bar(aes(y=..count.., fill=emotion)) +
+              xlab("Emotion Categories")+ylab("Number of Tweets")+ 
+                ggtitle("SENTIMENT ANALYSIS OF TWEETS ON TWITTER ABOUT Rahul- Emotions")
+
+       #### Plot distribution of polarity
+            ggplot(Rah_sentiment, aes(x=polarity)) + geom_bar(aes(y=..count.., fill=polarity)) + 
+              xlab("Polarity Categories") + ylab("Number of Tweets") + 
+                ggtitle("SENTIMENT ANALYSIS OF TWEETS ON TWITTER ABOUT Rahul- Polarity")7: SEPARATE TEXT BY EMOTIONS & VISUALIZE THE WORDS WITH A COMPARISON CLOUD USING WORD CLOUD PACKAGE
+
+####################################################################
+
+# STEP 7: PERFORM COMPARISON CLOUD
+
+####################################################################
+
+    ## STEP 7.1: Separate text by emotion
+         emos = levels(factor(Kejriwal_sentiment$emotion))
+           nemo = length(emos)
+             emo.docs = rep("", nemo)
+          for (i in 1:nemo)
+        {
+          tmp = Kejriwal.txt[emotion == emos[i]]
+          emo.docs[i] = paste(tmp, collapse=" ")
+        }
+
+    ## STEP 7.2: Remove stopwords
+         emo.docs <- removeWords(emo.docs, stopwords("english"))
+
+    ## STEP 7.3: Create corpus
+         corpus <- Corpus(VectorSource(emo.docs))
+            tdm <- TermDocumentMatrix(corpus)
+               tdm <- as.matrix(tdm)
+                  colnames(tdm) <- emos
+
+    ## STEP 7.4: Convert tdm into matrix  
+         tdm <- as.matrix(tdm)
+            findFreqTerms(emos, lowfreq=5)    
+
+    ## STEP 7.5: Get word counts in decreasing order
+         word_freqs <- sort(rowSums(tdm), decreasing=TRUE)
+
+    ## STEP 7.6: Create a data frame with words and their frequencies
+         dm <- data.frame(word=names(word_freqs), freq=word_freqs)
+
+         elec_candidate <- ggplot(subset(dm, freq>20), aes(word, freq))
+            elec_candidate <- elec_candidate+ geom_bar(stat="identity")
+               elec_candidate <- elec_candidate+ theme(axis.text.x=element_text(angle=45, hjust=1))
+
+         wordcloud(dm$word, dm$freq, random.order=FALSE, 
+            colors=brewer.pal(6, "Dark2"), min.freq=10, 
+               scale=c(4,.2),rot.per=.15)
+
+     ## STEP 7.7: Perform Comparison cloud
+          comparison.cloud(tdm, colors=brewer.pal(nemo, "Dark2"),
+             scale=c(3,.5), rot.per=.15,
+                random.order=FALSE, title.size=1.5)
+
+#####################################################################
+
+# STEP 8: ESTIMATE TWEET'S SENTIMENT  
+# (BY PERFORMING "SENTIMENT SCORING ALGORITHM": Method 2- Lexicon Based)
+# (Following Breen's Approach)
+
+#####################################################################
+
+    ## STEP 8.1: 
+      
+      score.sentiment <- function(sentences, pos.words, neg.words, .progress='none')
+      
+        {
+              #require(plyr)
+              #require(stringr)
+            scores <- laply(sentences, function(sentence, pos.words, neg.words)
+              {
+                sentence <- gsub('[[:punct:]]', "", sentence)
+                sentence <- gsub('[[:cntrl:]]', "", sentence)
+                sentence <- gsub('\\d+', "", sentence)
+                sentence <- tolower(sentence)
+            word.list <- str_split(sentence, '\\s+')
+            words <- unlist(word.list)
+              pos.matches <- match(words, pos.words)
+              neg.matches <- match(words, neg.words)
+              pos.matches <- !is.na(pos.matches)
+              neg.matches <- !is.na(neg.matches)
+                  score <- sum(pos.matches) - sum(neg.matches)
+              return(score)
+              
+              }, pos.words, neg.words, .progress=.progress)
+          
+            scores.df <- data.frame(score=scores, text=sentences)
+              return(scores.df)
+         }
+
+    ## STEP 8.2(a): Load folder with positive  & negative dictionary in R
+         pos <- scan('C:/Users/NAFIS-NEHAN/Documents/positive-words.txt', 
+            what='character', comment.char=';')
+
+         neg <- scan('C:/Users/NAFIS-NEHAN/Documents/negative-words.txt', 
+            what='character', comment.char=';') 
+
+    ## STEP 8.2(b): Add words to list
+          pos.words = c(pos, 'upgrade')
+            neg.words = c(neg, 'wtf', 'wait', 'waiting', 'epicfail')
+
+    ## STEP 8.3: Analysis the score
+         Kejriwal_analysis = score.sentiment(Kejriwal.txt, pos, neg,.progress='text')
+           table(Kejriwal_analysis$score)
+             hist(Kejriwal_analysis$score)
+
+         Modi_analysis = score.sentiment(Modi.txt, pos, neg)
+           table(Modi_analysis$score)
+             hist(Modi_analysis$score)
+
+         Rahul_analysis = score.sentiment(Rahul.txt, pos, neg)
+           table(Rahul_analysis$score)
+             hist(Rahul_analysis$score)
+
+#####################################################################
+
+# STEP 9: TEXT MINING 
+
+#####################################################################
+
+    ## STEP 9.1: Transforming Text
+  
+      ### STEP 9.1.1: Build a corpus, which is a collection of text documents
+                    # VectorSource specifies that the source is character vectors
+                    
+              # library(tm)
+
+df <- data.frame(V1 = Kejriwal.txt, stringsAsFactors = FALSE)
+
+            mycorpus <- Corpus(VectorSource(Kejriwal_txt))
+
+            #  mycorpus <- Corpus(VectorSource(Modi_txt))
+            #    mycorpus <- Corpus(VectorSource(Rahul_txt))
+      
+      ### STEP 9.1.2: Preprocessing Text
+                    # (Changing letters to lower case, removing punctuations/numbers & stop words) 
+    
+            clean.corpus<-function(mycorpus)
+          {
+                mycorpus = tm_map(mycorpus, removePunctuation)
+                  mycorpus = tm_map(mycorpus, stripWhitespace)
+                    mycorpus = tm_map(mycorpus, tolower)
+
+              # The general English stop-word list is tailored by adding 
+              # "available" and "via" and removing "r")
+                      myStopwords <- c(stopwords('english'), "available", "via")
+                    idx <- which(myStopwords == "r")
+                  myStopwords <- myStopwords[-idx]
+                mycorpus <- tm_map(mycorpus, removeWords, myStopwords)
+              
+            return(mycorpus)
+          }
+
+            Kejriwal.corpus = clean.corpus(mycorpus)
+            #  Modi.corpus = clean.corpus(mycorpus)
+            #    Rahul.corpus = clean.corpus(mycorpus)
+
+    
+    ## STEP 9.3: Stemming words to retrieve the root form, so that words look normal
+         
+            # require(snowball)
+            # require(Rweka)
+            # require(rJava)
+            # require(Rwekajars)
+          
+      ### STEP 9.3.1: Perform stemDocument
+      ### STEP 9.3.2: Perform stemDocument
+      ### STEP 9.3.3: Inspect the first three "documents"
+      ### STEP 9.3.4: Stem completion
+      ### STEP 9.3.5: Print the first three documents in the built corpus
+    ## STEP 9.4: Build a Document-Term Matrix
+    ## STEP 9.5: Build a td Matrix from a corpus & find list of words associated wth "Kejriwal"
+
+#-------- Kejriwal    
+            dictcorpus <- Kejriwal.corpus
+          
+          Kejriwal.corpus <- tm_map(Kejriwal.corpus, stemDocument)
+            inspect(Kejriwal.corpus[1:3])
+            
+               mycorpus <- tm_map(Kejriwal.corpus, stemCompletion, dictionary=dictcorpus)
+                 inspect(Kejriwal.corpus[1:3])
+
+                    myDtm <- TermDocumentMatrix(Kejriwal.corpus, control = list(minWordLength = 1))
+                       inspect(myDtm[341:350,31:40])
+
+            findFreqTerms(myDtm, lowfreq=30)
+              findAssocs(myDtm, 'Kejriwal', 0.80)
+
+#-------- Modi
+              dictcorpus <- Modi.corpus
+
+            Modi.corpus <- tm_map(Modi.corpus, stemDocument)
+              inspect(Kejriwal.corpus[1:3])
+
+                 mycorpus <- tm_map(Modi.corpus, stemCompletion, dictionary=dictcorpus)
+                   inspect(Modi.corpus[1:3])
+
+                      myDtm <- TermDocumentMatrix(Modi.corpus, control = list(minWordLength = 1))
+                        inspect(myDtm[200:210,21:30])
+
+            findFreqTerms(myDtm, lowfreq=40)
+              findAssocs(myDtm, 'Kejriwal', 0.20)
+
+#-------- Rahul
+              dictcorpus <- Rahul.corpus
+
+            Rahul.corpus <- tm_map(Rahul.corpus, stemDocument)
+              inspect(Rahul.corpus[1:3])
+
+                 mycorpus <- tm_map(Rahul.corpus, stemCompletion, dictionary=dictcorpus)
+                   inspect(Rahul.corpus[1:3])
+
+                      myDtm <- TermDocumentMatrix(Rahul.corpus, control = list(minWordLength = 1))
+                        inspect(myDtm[200:210,21:30])
+
+            findFreqTerms(myDtm, lowfreq=40)
+              findAssocs(myDtm, 'Kejriwal', 0.20)
