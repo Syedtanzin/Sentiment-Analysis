@@ -1,0 +1,98 @@
+#####################################################################
+
+# STEP 1: INSTALL REQUIRED PACKAGES AND CONNECT TO ALL LIBRARIES
+
+#####################################################################
+
+install.packages("devtools")
+require(devtools)
+install_url("http://cran.r-project.org/src/contrib/Archive/sentiment/sentiment_0.2.tar.gz")
+require(sentiment)
+ls("package:sentiment")
+install.packages("gridExtra")
+require(gridExtra)
+
+# install_url("http://cran.r-project.org/src/contrib/Archive/Snowball/Snowball_0.0-11.tar.gz")
+# require(snowball)
+
+library(RCurl)
+library(ROAuth)
+library(twitteR)
+library(plyr)
+library(dplyr)
+library(stringr)
+library(ggplot2)
+library(reshape2)
+library(wordcloud)
+library(sentiment)
+library(RColorBrewer)
+library(NLP)
+
+update.packages("tm",  checkBuilt = TRUE)
+library(tm)
+library(SnowballC)
+
+
+require(Rweka)
+require(rJava)
+require(Rwekajars)
+
+#####################################################################
+
+# STEP 2: SET UP TWITTER API TO WORK ON R ENVIRONMENT
+
+#####################################################################
+
+#library(RCurl)
+#library(ROAuth)
+#library(twitteR)
+
+
+download.file(url="http://curl.haxx.se/ca/cacert.pem", destfile="cacert.pem")
+
+# Set constant request, access and authrize URL
+requestURL <- "https://api.twitter.com/oauth/request_token"
+accessURL <- "https://api.twitter.com/oauth/access_token"
+authURL <- "https://api.twitter.com/oauth/authorize"
+
+# Put the both Consumer Key and Consumer Secret key from Twitter App.
+consumerKey <- "WOkhwRl4zaDBGYlcxOoOObxug" 
+consumerSecret <- "7rWJayHoIGDHWo3xXY0vymlFqhaC2zZLblLZdywEXR7M5prj83" 
+
+# Create the authorization object by calling function OAuthFactory
+Cred <- OAuthFactory$new(consumerKey=consumerKey,
+                         consumerSecret=consumerSecret,
+                         requestURL=requestURL,
+                         accessURL=accessURL, 
+                         authURL=authURL)
+
+# Handshake Oauth; Get code and enter it on URL in Console
+Cred$handshake(
+        cainfo = system.file("CurlSSL", "cacert.pem", package = "RCurl")
+        )
+
+# Declare Twitter API credentials 
+access_Token <- "3290178023-pQgqNOuINlN6w8ekh2VqyeOxnFnut9aKNlKHfuI" 
+access_Secret <- "VFXNr2MZeIEl2UM1MmP1IkUuvbLFhVdHnpBEkkPlyn1fw"
+
+# consumerKey <- "WOkhwRl4zaDBGYlcxOoOObxug " 
+# consumerSecret <- "7rWJayHoIGDHWo3xXY0vymlFqhaC2zZLblLZdywEXR7M5prj83"
+
+# Create Twitter connection
+setup_twitter_oauth(consumerKey,consumerSecret,access_Token,access_Secret)
+
+
+#####################################################################
+
+# STEP 3: COLLECT TWEETS RELATED CANDIDATES OF INDIAN_ELECTION(2014)
+
+#####################################################################
+
+Kejriwal_tweets1 <-searchTwitter("#Kejriwal kejriwal", n=2000, lang="en",since="2015-01-01")
+  Kejriwal_tweets2 <-searchTwitter('@AamAdmiParty', n=2000, lang="en", since="2015-01-01")
+  
+Modi_tweets1 <-searchTwitter("#Modi Modi", n=2000, lang="en",since="2015-01-01")
+  Modi_tweets2 <-searchTwitter('@BJP', n=2000, lang="en", since="2015-01-01")
+  
+Rahul_tweets1 <-searchTwitter("#Rahul Rahul", n=2000, lang="en",since="2015-01-01")
+  Rahul_tweets2 <-searchTwitter('@IndianNationalCongress', n=2000, lang="en", since="2015-01-01")
